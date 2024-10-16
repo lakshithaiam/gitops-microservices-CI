@@ -49,5 +49,25 @@ pipeline {
                 }
             }
         }
+        stage('Install Prometheus and Grafana') {
+            steps {
+                script {
+                    dir('configuration') {
+                        // Update kubeconfig for EKS
+                        sh 'aws eks update-kubeconfig --name myapp-eks-cluster'
+                        
+                        // Add Helm repos and install monitoring stack
+                        sh 'helm repo add stable https://charts.helm.sh/stable'
+                        sh 'helm repo add prometheus-community https://prometheus-community.github.io/helm-charts'
+                        sh 'helm search repo prometheus-community'
+                        sh 'kubectl create namespace prometheus || true' // Ignore error if namespace already exists
+                        sh 'helm install stable prometheus-community/kube-prometheus-stack -n prometheus'
+                        sh 'kubectl patch svc stable-grafana -n prometheus -p "{\\"spec\\": {\\"type\\": \\"LoadBalancer\\"}}"'
+                        sh 'kubectl get pods -n prometheus'
+                        sh 'kubectl get svc -n prometheus'
+                    }
+                }
+            }
+        }
     }
 }

@@ -53,7 +53,7 @@ pipeline {
             steps {
                 script {
                     // Use sed to replace the image tag in k8-manifest.yml
-                    sh "sed -i 's|image: lakshithaiam/currencyservice:.*|image: lakshithaiam/currencyservice:${env.DOCKER_TAG}|' gitops-microservices-CD/Kubernetes_Manifest/k8-manifest.yml"
+                    sh "sed -i 's|image: lakshithaiam/cartservice:.*|image: lakshithaiam/cartservice:${env.DOCKER_TAG}|' gitops-microservices-CD/Kubernetes_Manifest/k8-manifest.yml"
                 }
             }
         }

@@ -56,7 +56,7 @@ pipeline {
                         sh 'git config user.name "lakshithaiam"'
                         sh 'git config user.email "lakshithaiam@gmail.com"'
                         sh 'git add Kubernetes_Manifest/k8-manifest.yml'
-                        sh 'git commit -m "Updated Docker image tag to ${env.DOCKER_TAG}"'
+                        sh "git commit -m 'Updated Docker image tag to ${env.DOCKER_TAG}'"
 
                         // Push the changes
                         withCredentials([usernamePassword(credentialsId: 'git-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {

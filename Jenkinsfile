@@ -5,13 +5,11 @@ pipeline {
         stage('Input Docker Tag') {
             steps {
                 script {
-                    // Prompt for the Docker tag and store it in a variable
                     def dockerTagInput = input(
                         id: 'userInput', message: 'Enter Docker Tag', parameters: [
                             string(name: 'DOCKER_TAG', defaultValue: 'latest', description: 'Docker Tag')
                         ]
                     )
-                    // Assign the input value to an environment variable
                     env.DOCKER_TAG = dockerTagInput
                 }
             }
@@ -20,10 +18,8 @@ pipeline {
         stage('Build & Tag Docker Image') {
             steps {
                 script {
-                    dir('src'){
                         withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
                             sh "docker build -t lakshithaiam/checkoutservice:${env.DOCKER_TAG} ."
-                        }
                     }
                 }
             }
@@ -39,48 +35,36 @@ pipeline {
             }
         }
 
-        stage('Clone Repository') {
+        stage('Clone and Update k8-manifest.yml') {
             steps {
                 script {
-                    withCredentials([gitUsernamePassword(credentialsId: 'git-cred', gitToolName: 'Default')]) {
-                        sh "git clone https://github.com/lakshithaiam/gitops-microservices-CD.git"
+                    // Check if the directory exists and delete if it does
+                    if (fileExists('gitops-microservices-CD')) {
+                        sh 'rm -rf gitops-microservices-CD'
                     }
-                }
-            }
-        }
 
-        stage('Update Image Tag in Kubernetes Manifest') {
-            steps {
-                script {
-                    // Use sed to replace the image tag in k8-manifest.yml
-                    sh "sed -i 's|image: lakshithaiam/checkoutservice:.*|image: lakshithaiam/checkoutservice:${env.DOCKER_TAG}|' gitops-microservices-CD/Kubernetes_Manifest/k8-manifest.yml"
-                }
-            }
-        }
-        
-        stage('Commit and Push Changes') {
-            steps {
-                script {
-                    withCredentials([gitUsernamePassword(credentialsId: 'git-cred', gitToolName: 'Default')]) {
-                        dir('gitops-microservices-CD') {
-                            sh 'git checkout main'
-                            sh 'git status'
-                            sh 'git config --global user.name "lakshithaiam"'
-                            sh 'git config --global user.email "lakshithaiam@gmail.com"'
-                            sh 'git add .'
-                            sh "git commit -m 'Update image tag to ${env.DOCKER_TAG}'"
-                            sh 'git push -u origin main'
+                    // Use credentials for cloning the repository
+                    withCredentials([usernamePassword(credentialsId: 'git-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                        sh 'git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/lakshithaiam/gitops-microservices-CD.git'
+                    }
+
+                    // Update k8-manifest.yml with the new Docker tag using sed
+                    dir('gitops-microservices-CD') {
+                        sh "sed -i 's|image: lakshithaiam/checkoutservice:.*|image: lakshithaiam/checkoutservice:${env.DOCKER_TAG}|g' Kubernetes_Manifest/k8-manifest.yml"
+
+                        // Configure Git user and commit the changes
+                        sh 'git config user.name "lakshithaiam"'
+                        sh 'git config user.email "lakshithaiam@gmail.com"'
+                        sh 'git add Kubernetes_Manifest/k8-manifest.yml'
+                        sh "git commit -m 'Updated Docker image tag to ${env.DOCKER_TAG}'"
+
+                        // Push the changes
+                        withCredentials([usernamePassword(credentialsId: 'git-cred', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                            sh 'git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/lakshithaiam/gitops-microservices-CD.git'
                         }
                     }
                 }
             }
-        }
-    }
-
-    post {
-        always {
-            // Clean the workspace at the end
-            cleanWs()
         }
     }
 }
